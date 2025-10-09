@@ -9,10 +9,11 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	fileServer := http.FileServer(http.Dir("."))
+	fileServer := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
 
-	mux.Handle("/", fileServer)
-	mux.Handle("/assets/logo.png", fileServer)
+	mux.Handle("/app/", fileServer)
+	mux.Handle("/app/assets/logo.png", fileServer)
+	mux.HandleFunc("/healthz", readiness)
 
 	port := "8080"
 	server := &http.Server{
@@ -25,4 +26,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting server. ERR: %v", err)
 	}
+}
+
+func readiness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
