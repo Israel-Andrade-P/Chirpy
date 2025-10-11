@@ -1,11 +1,24 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
 )
+
+type dtoRequest struct {
+	Body string `json:"body"`
+}
+
+type dtoResponse struct {
+	Valid string `json:"valid"`
+}
+
+type errorResponse struct {
+	ErrMsg string `json:"error"`
+}
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
@@ -20,8 +33,17 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	hits := cfg.fileserverHits.Load()
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "Hits: %d", hits)
+	html := fmt.Sprintf(`
+	        <html>
+				<body>
+					<h1>Welcome, Chirpy Admin</h1>
+					<p>Chirpy has been visited %d times!</p>
+				</body>
+			</html>
+	    `, hits)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
@@ -39,9 +61,10 @@ func main() {
 
 	mux.Handle("/app/", apicfg.middlewareMetricsInc(fileServer))
 	mux.Handle("/app/assets/logo.png", apicfg.middlewareMetricsInc(fileServer))
-	mux.HandleFunc("GET /healthz", readiness)
-	mux.HandleFunc("GET /metrics", apicfg.handlerMetrics)
-	mux.HandleFunc("POST /reset", apicfg.handlerReset)
+	mux.HandleFunc("GET /admin/healthz", readiness)
+	mux.HandleFunc("GET /admin/metrics", apicfg.handlerMetrics)
+	mux.HandleFunc("POST /admin/reset", apicfg.handlerReset)
+	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 
 	port := "8080"
 	server := &http.Server{
@@ -68,4 +91,38 @@ func noCacheFileServer(h http.Handler) http.Handler {
 		r.Header.Del("If-None-Match")
 		h.ServeHTTP(w, r)
 	})
+}
+
+func validateChirp(w http.ResponseWriter, r *http.Request) {
+	var reqBody dtoRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(reqBody.Body) > 140 {
+		respErr := errorResponse{ErrMsg: "Chirp is too long"}
+		data, err := json.Marshal(respErr)
+		if err != nil {
+			log.Printf("Error has occurred marshaling data. ERR: %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "aplication/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(data)
+		return
+	}
+
+	res := dtoResponse{Valid: "true"}
+	data, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("Error has occurred marshaling data. ERR: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
