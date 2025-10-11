@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 )
 
@@ -97,32 +98,56 @@ func validateChirp(w http.ResponseWriter, r *http.Request) {
 	var reqBody dtoRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
 	if len(reqBody.Body) > 140 {
-		respErr := errorResponse{ErrMsg: "Chirp is too long"}
-		data, err := json.Marshal(respErr)
-		if err != nil {
-			log.Printf("Error has occurred marshaling data. ERR: %v\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "aplication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(data)
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long.")
 		return
 	}
 
-	res := dtoResponse{Valid: "true"}
-	data, err := json.Marshal(res)
+	cleanMessage := cleanUpMessage(reqBody.Body)
+	res := dtoResponse{Valid: cleanMessage}
+	respondWithJson(w, http.StatusOK, res)
+}
+
+func respondWithJson(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	data, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("Error has occurred marshaling data. ERR: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		//Fallback response
+		http.Error(w, `"error": "Internal server error"`, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+
+	w.WriteHeader(status)
 	w.Write(data)
+}
+
+func respondWithError(w http.ResponseWriter, status int, errMsg string) {
+	errPayload := errorResponse{ErrMsg: errMsg}
+	respondWithJson(w, status, errPayload)
+}
+
+func cleanUpMessage(message string) string {
+	profanityList := []string{"kerfuffle", "sharbert", "fornax"}
+	words := strings.Split(strings.ToLower(message), " ")
+
+	for i := 0; i < len(words); i++ {
+		if contains(profanityList, words[i]) {
+			words[i] = "****"
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func contains[T comparable](slice []T, target T) bool {
+	for _, element := range slice {
+		if element == target {
+			return true
+		}
+	}
+	return false
 }
