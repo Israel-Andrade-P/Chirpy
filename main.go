@@ -1,12 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
+
+	"github.com/Israel-Andrade-P/Chirpy.git/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type dtoRequest struct {
@@ -54,6 +60,18 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("ERROR >> %v", err)
+	}
+
+	dbUrl := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbUrl)
+	if err != nil {
+		log.Fatalf("ERROR >> %v", err)
+	}
+	dbQueries := database.New(db)
+	log.Println(dbQueries)
+
 	apicfg := &apiConfig{}
 	mux := http.NewServeMux()
 
@@ -74,8 +92,7 @@ func main() {
 	}
 
 	fmt.Println("Starting server on port 8080...")
-	err := server.ListenAndServe()
-	if err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting server. ERR: %v", err)
 	}
 }
