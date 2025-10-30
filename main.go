@@ -28,7 +28,8 @@ type errorResponse struct {
 }
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
+	fileserverHits  atomic.Int32
+	databaseQueries *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -70,9 +71,8 @@ func main() {
 		log.Fatalf("ERROR >> %v", err)
 	}
 	dbQueries := database.New(db)
-	log.Println(dbQueries)
 
-	apicfg := &apiConfig{}
+	apicfg := &apiConfig{databaseQueries: dbQueries}
 	mux := http.NewServeMux()
 
 	fileServer := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
