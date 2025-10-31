@@ -9,8 +9,10 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/Israel-Andrade-P/Chirpy.git/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -27,9 +29,21 @@ type errorResponse struct {
 	ErrMsg string `json:"error"`
 }
 
+type registerRequest struct {
+	Email string `json:"email"`
+}
+
+type ResponseUser struct {
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type apiConfig struct {
-	fileserverHits  atomic.Int32
-	databaseQueries *database.Queries
+	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -54,10 +68,33 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+func (cfg *apiConfig) registerUser(w http.ResponseWriter, r *http.Request) {
+	var registerReq registerRequest
+	if err := json.NewDecoder(r.Body).Decode(&registerReq); err != nil {
+		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+	user, err := cfg.dbQueries.CreateUser(r.Context(), registerReq.Email)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid Email")
+	}
+	u := ResponseUser{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+	respondWithJson(w, http.StatusCreated, u)
+}
+
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("You are not allowed to do this"))
+		return
+	}
 	cfg.fileserverHits.Store(0)
+	if err := cfg.dbQueries.DeleteUsers(r.Context()); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Counter reset.\n"))
+	w.Write([]byte("Counter reset.\nAlso all your users are gone btw\n"))
 }
 
 func main() {
@@ -66,13 +103,14 @@ func main() {
 	}
 
 	dbUrl := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbUrl)
 	if err != nil {
 		log.Fatalf("ERROR >> %v", err)
 	}
 	dbQueries := database.New(db)
 
-	apicfg := &apiConfig{databaseQueries: dbQueries}
+	apicfg := &apiConfig{dbQueries: dbQueries, platform: platform}
 	mux := http.NewServeMux()
 
 	fileServer := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
@@ -84,6 +122,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apicfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apicfg.handlerReset)
 	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
+	mux.HandleFunc("POST /api/users", apicfg.registerUser)
 
 	port := "8080"
 	server := &http.Server{
