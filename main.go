@@ -129,6 +129,21 @@ func (cfg *apiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusOK, chirpsRes)
 }
 
+func (cfg *apiConfig) getChirp(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("chirpID")
+	parsedId, err := uuid.Parse(id)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+	chirp, err := cfg.dbQueries.GetChirp(r.Context(), parsedId)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+	}
+	chirpRes := chirpResponse{ID: chirp.ID, Body: chirp.Body, CreatedAt: chirp.CreatedAt, UpdatedAt: chirp.UpdatedAt, UserID: chirp.UserID}
+	respondWithJson(w, http.StatusOK, chirpRes)
+}
+
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	if cfg.platform != "dev" {
 		w.WriteHeader(http.StatusForbidden)
@@ -170,6 +185,7 @@ func main() {
 	mux.HandleFunc("POST /api/users", apicfg.registerUser)
 	mux.HandleFunc("POST /api/chirps", apicfg.saveChirp)
 	mux.HandleFunc("GET /api/chirps", apicfg.getChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apicfg.getChirp)
 
 	port := "8080"
 	server := &http.Server{
