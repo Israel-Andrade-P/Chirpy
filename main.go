@@ -40,6 +40,20 @@ type ResponseUser struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type (
+	chirpRequest struct {
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
+	}
+	chirpResponse struct {
+		ID        uuid.UUID `json:"id"`
+		Body      string    `json:"body"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+)
+
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
@@ -83,6 +97,26 @@ func (cfg *apiConfig) registerUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusCreated, u)
 }
 
+func (cfg *apiConfig) saveChirp(w http.ResponseWriter, r *http.Request) {
+	var chirpReq chirpRequest
+	if err := json.NewDecoder(r.Body).Decode(&chirpReq); err != nil {
+		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+	if len(chirpReq.Body) > 140 {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long.")
+		return
+	}
+	cleanMessage := cleanUpMessage(chirpReq.Body)
+	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanMessage, UserID: chirpReq.UserID})
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid Chirp")
+	}
+	c := chirpResponse{ID: chirp.ID, Body: chirp.Body, CreatedAt: chirp.CreatedAt, UpdatedAt: chirp.UpdatedAt, UserID: chirp.UserID}
+	respondWithJson(w, http.StatusCreated, c)
+}
+
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	if cfg.platform != "dev" {
 		w.WriteHeader(http.StatusForbidden)
@@ -121,8 +155,8 @@ func main() {
 	mux.HandleFunc("GET /admin/healthz", readiness)
 	mux.HandleFunc("GET /admin/metrics", apicfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apicfg.handlerReset)
-	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 	mux.HandleFunc("POST /api/users", apicfg.registerUser)
+	mux.HandleFunc("POST /api/chirps", apicfg.saveChirp)
 
 	port := "8080"
 	server := &http.Server{
@@ -148,24 +182,6 @@ func noCacheFileServer(h http.Handler) http.Handler {
 		r.Header.Del("If-None-Match")
 		h.ServeHTTP(w, r)
 	})
-}
-
-func validateChirp(w http.ResponseWriter, r *http.Request) {
-	var reqBody dtoRequest
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
-		respondWithError(w, http.StatusInternalServerError, "Internal Error")
-		return
-	}
-
-	if len(reqBody.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long.")
-		return
-	}
-
-	cleanMessage := cleanUpMessage(reqBody.Body)
-	res := dtoResponse{Valid: cleanMessage}
-	respondWithJson(w, http.StatusOK, res)
 }
 
 func respondWithJson(w http.ResponseWriter, status int, payload any) {
