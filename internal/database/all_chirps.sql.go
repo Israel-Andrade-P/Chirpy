@@ -10,7 +10,7 @@ import (
 )
 
 const getAllChirps = `-- name: GetAllChirps :many
-SELECT id, body, created_at, updated_at, user_id FROM chirps
+SELECT id, body, created_at, updated_at, user_id FROM chirps ORDER BY created_at ASC
 `
 
 func (q *Queries) GetAllChirps(ctx context.Context) ([]Chirp, error) {

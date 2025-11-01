@@ -117,6 +117,18 @@ func (cfg *apiConfig) saveChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusCreated, c)
 }
 
+func (cfg *apiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.dbQueries.GetAllChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "No Chirps")
+	}
+	chirpsRes := make([]chirpResponse, 0)
+	for _, chirp := range chirps {
+		chirpsRes = append(chirpsRes, chirpResponse(chirp))
+	}
+	respondWithJson(w, http.StatusOK, chirpsRes)
+}
+
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	if cfg.platform != "dev" {
 		w.WriteHeader(http.StatusForbidden)
@@ -157,6 +169,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apicfg.handlerReset)
 	mux.HandleFunc("POST /api/users", apicfg.registerUser)
 	mux.HandleFunc("POST /api/chirps", apicfg.saveChirp)
+	mux.HandleFunc("GET /api/chirps", apicfg.getChirps)
 
 	port := "8080"
 	server := &http.Server{
