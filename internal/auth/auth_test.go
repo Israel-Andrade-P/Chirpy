@@ -18,7 +18,6 @@ func TestHashPassword(t *testing.T) {
 		t.Errorf("Password not hashed! Plain text returned: %s", hashed)
 	}
 
-	//CheckPasswordHash func
 	match, err := CheckPasswordHash(plain_pwd, hashed)
 	if err != nil {
 		t.Fatalf("Error occurred during Testing: %v", err)
@@ -26,7 +25,7 @@ func TestHashPassword(t *testing.T) {
 	if !match {
 		t.Errorf("Plain password and hash didn't match!")
 	}
-	//Shouldn't match
+	//shouldn't match
 	match, _ = CheckPasswordHash("wrongpwd", hashed)
 	if match {
 		t.Errorf("Passwords shouldn't match but they did!")
@@ -47,6 +46,12 @@ func TestValidateJWT(t *testing.T) {
 	}
 	if resultId != expectedId {
 		t.Errorf("token doesn't belong to logged in user")
+	}
+
+	//wrong secret passed in
+	_, err = ValidateJWT(jwtToken, "wrongsecret")
+	if err == nil {
+		t.Errorf("token validated even with wrong secret")
 	}
 
 	//testing token expiration

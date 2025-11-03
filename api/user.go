@@ -15,14 +15,16 @@ import (
 
 type (
 	userRequest struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
 	UserResponse struct {
 		ID        uuid.UUID `json:"id"`
 		Email     string    `json:"email"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
+		Token     string    `json:"token"`
 	}
 )
 
@@ -30,6 +32,7 @@ type Apiconfig struct {
 	FileserverHits atomic.Int32
 	DbQueries      *database.Queries
 	Platform       string
+	Secret         string
 }
 
 func (cfg *Apiconfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +80,17 @@ func (cfg *Apiconfig) Login(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithError(w, http.StatusUnauthorized, "email or password incorrect.")
 		return
 	}
-	userRes := UserResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+	expiration := 60
+	if userReq.ExpiresInSeconds > 0 && userReq.ExpiresInSeconds <= expiration {
+		expiration = userReq.ExpiresInSeconds
+	}
+	jwt, err := auth.MakeJWT(user.ID, cfg.Secret, time.Minute*time.Duration(expiration))
+	if err != nil {
+		log.Printf("Error has occurred creating the jwt. ERR: %v", err)
+		utils.RespondWithError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	userRes := UserResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Token: jwt}
 	utils.RespondWithJson(w, http.StatusOK, userRes)
 }
 

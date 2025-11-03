@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Israel-Andrade-P/Chirpy.git/internal/auth"
 	"github.com/Israel-Andrade-P/Chirpy.git/internal/database"
 	"github.com/Israel-Andrade-P/Chirpy.git/utils"
 	"github.com/google/uuid"
@@ -13,8 +14,7 @@ import (
 
 type (
 	chirpRequest struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 	chirpResponse struct {
 		ID        uuid.UUID `json:"id"`
@@ -26,6 +26,16 @@ type (
 )
 
 func (cfg *Apiconfig) SaveChirp(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusUnauthorized, "Please autenticate yourself")
+		return
+	}
+	userId, err := auth.ValidateJWT(token, cfg.Secret)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusUnauthorized, "Your token is invalid, get a new one")
+		return
+	}
 	var chirpReq chirpRequest
 	if err := json.NewDecoder(r.Body).Decode(&chirpReq); err != nil {
 		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)
@@ -37,7 +47,7 @@ func (cfg *Apiconfig) SaveChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cleanMessage := utils.CleanUpMessage(chirpReq.Body)
-	chirp, err := cfg.DbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanMessage, UserID: chirpReq.UserID})
+	chirp, err := cfg.DbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanMessage, UserID: userId})
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid Chirp")
 	}
