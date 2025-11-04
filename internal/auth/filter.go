@@ -8,10 +8,15 @@ import (
 
 // Write a Unit Test for this!!!
 func GetBearerToken(headers http.Header) (string, error) {
-	token := ""
-	if val, ok := headers["Authorization"]; ok {
-		token = strings.Split(val[0], " ")[1]
-		return token, nil
+	val, ok := headers["Authorization"]
+	if !ok || len(val) == 0 {
+		return "", errors.New("no authorization header")
 	}
-	return "", errors.New("no authorization header")
+
+	parts := strings.SplitN(val[0], " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return "", errors.New("invalid authorization header")
+	}
+
+	return parts[1], nil
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/Israel-Andrade-P/Chirpy.git/internal/auth"
@@ -27,13 +26,6 @@ type (
 		Token     string    `json:"token"`
 	}
 )
-
-type Apiconfig struct {
-	FileserverHits atomic.Int32
-	DbQueries      *database.Queries
-	Platform       string
-	Secret         string
-}
 
 func (cfg *Apiconfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var registerReq userRequest
