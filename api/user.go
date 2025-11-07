@@ -23,6 +23,9 @@ type (
 		Email     string    `json:"email"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
+		
+	}
+	LoginResponse struct {
 		Token     string    `json:"token"`
 	}
 )
@@ -82,8 +85,8 @@ func (cfg *Apiconfig) Login(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	userRes := UserResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Token: jwt}
-	utils.RespondWithJson(w, http.StatusOK, userRes)
+	loginRes := LoginResponse{Token: jwt}
+	utils.RespondWithJson(w, http.StatusOK, loginRes)
 }
 
 func (cfg *Apiconfig) DeleteAllUsers(w http.ResponseWriter, r *http.Request) {

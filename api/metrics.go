@@ -30,7 +30,7 @@ func (cfg *Apiconfig) HandlerMetrics(w http.ResponseWriter, r *http.Request) {
 func Readiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	w.Write([]byte("OK\n"))
 }
 
 func NoCacheFileServer(h http.Handler) http.Handler {
