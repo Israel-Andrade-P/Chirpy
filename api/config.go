@@ -11,4 +11,5 @@ type Apiconfig struct {
 	DbQueries      *database.Queries
 	Platform       string
 	Secret         string
+	Expiration     int
 }

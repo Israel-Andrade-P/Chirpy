@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Write a Unit Test for this!!!
 func GetBearerToken(headers http.Header) (string, error) {
 	val, ok := headers["Authorization"]
 	if !ok || len(val) == 0 {

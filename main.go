@@ -27,7 +27,7 @@ func main() {
 	}
 	dbQueries := database.New(db)
 
-	apicfg := &api.Apiconfig{DbQueries: dbQueries, Platform: platform, Secret: secret}
+	apicfg := &api.Apiconfig{DbQueries: dbQueries, Platform: platform, Secret: secret, Expiration: 60}
 	mux := http.NewServeMux()
 
 	fileServer := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
@@ -39,10 +39,13 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apicfg.HandlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apicfg.DeleteAllUsers)
 	mux.HandleFunc("POST /api/users", apicfg.RegisterUser)
+	mux.HandleFunc("PUT /api/users", apicfg.UpdateUser)
 	mux.HandleFunc("POST /api/login", apicfg.Login)
 	mux.HandleFunc("POST /api/chirps", apicfg.SaveChirp)
 	mux.HandleFunc("GET /api/chirps", apicfg.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apicfg.GetChirp)
+	mux.HandleFunc("POST /api/refresh", apicfg.Refresh)
+	mux.HandleFunc("POST /api/revoke", apicfg.RevokeToken)
 
 	port := "8080"
 	server := &http.Server{

@@ -50,6 +50,7 @@ func (cfg *Apiconfig) SaveChirp(w http.ResponseWriter, r *http.Request) {
 	chirp, err := cfg.DbQueries.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanMessage, UserID: userId})
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid Chirp")
+		return
 	}
 	c := chirpResponse{ID: chirp.ID, Body: chirp.Body, CreatedAt: chirp.CreatedAt, UpdatedAt: chirp.UpdatedAt, UserID: chirp.UserID}
 	utils.RespondWithJson(w, http.StatusCreated, c)
