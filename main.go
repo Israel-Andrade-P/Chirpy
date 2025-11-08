@@ -44,6 +44,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", apicfg.SaveChirp)
 	mux.HandleFunc("GET /api/chirps", apicfg.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apicfg.GetChirp)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apicfg.DeleteChirp)
 	mux.HandleFunc("POST /api/refresh", apicfg.Refresh)
 	mux.HandleFunc("POST /api/revoke", apicfg.RevokeToken)
 
