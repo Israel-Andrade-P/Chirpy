@@ -12,4 +12,5 @@ type Apiconfig struct {
 	Platform       string
 	Secret         string
 	Expiration     int
+	PolkaKey       string
 }

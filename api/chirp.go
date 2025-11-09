@@ -57,11 +57,29 @@ func (cfg *Apiconfig) SaveChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *Apiconfig) GetChirps(w http.ResponseWriter, r *http.Request) {
+	s := r.URL.Query().Get("author_id")
+	chirpsRes := make([]chirpResponse, 0)
+	if s != "" {
+		userId, err := uuid.Parse(s)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		chirps, err := cfg.DbQueries.GetChirpsByUser(r.Context(), userId)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusNotFound, "no chirps")
+			return
+		}
+		for _, chirp := range chirps {
+			chirpsRes = append(chirpsRes, chirpResponse(chirp))
+		}
+		utils.RespondWithJson(w, http.StatusOK, chirpsRes)
+		return
+	}
 	chirps, err := cfg.DbQueries.GetAllChirps(r.Context())
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "No Chirps")
 	}
-	chirpsRes := make([]chirpResponse, 0)
 	for _, chirp := range chirps {
 		chirpsRes = append(chirpsRes, chirpResponse(chirp))
 	}

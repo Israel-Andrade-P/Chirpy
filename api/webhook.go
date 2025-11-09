@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
+	"github.com/Israel-Andrade-P/Chirpy.git/internal/auth"
 	"github.com/Israel-Andrade-P/Chirpy.git/utils"
 	"github.com/google/uuid"
 )
@@ -20,6 +22,16 @@ type (
 )
 
 func (cfg *Apiconfig) UpdateChirpRedStatus(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusUnauthorized, "authentication process failed")
+		return
+	}
+	if !strings.EqualFold(apiKey, cfg.PolkaKey) {
+		utils.RespondWithError(w, http.StatusUnauthorized, "invalid api key")
+		return
+	}
+
 	var req webHookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error has occurred decoding request body. ERR: %v\n", err)

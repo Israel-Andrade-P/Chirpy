@@ -21,13 +21,14 @@ func main() {
 	dbUrl := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	secret := os.Getenv("JWT_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 	db, err := sql.Open("postgres", dbUrl)
 	if err != nil {
 		log.Fatalf("ERROR >> %v", err)
 	}
 	dbQueries := database.New(db)
 
-	apicfg := &api.Apiconfig{DbQueries: dbQueries, Platform: platform, Secret: secret, Expiration: 60}
+	apicfg := &api.Apiconfig{DbQueries: dbQueries, Platform: platform, Secret: secret, Expiration: 60, PolkaKey: polkaKey}
 	mux := http.NewServeMux()
 
 	fileServer := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))

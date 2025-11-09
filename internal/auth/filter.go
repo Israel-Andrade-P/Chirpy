@@ -19,3 +19,17 @@ func GetBearerToken(headers http.Header) (string, error) {
 
 	return parts[1], nil
 }
+
+func GetApiKey(headers http.Header) (string, error) {
+	val, ok := headers["Authorization"]
+	if !ok || len(val) == 0 {
+		return "", errors.New("no authorization header")
+	}
+
+	parts := strings.SplitN(val[0], " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "ApiKey") {
+		return "", errors.New("invalid authorization header")
+	}
+
+	return parts[1], nil
+}
