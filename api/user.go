@@ -18,10 +18,11 @@ type (
 		Password string `json:"password"`
 	}
 	UserResponse struct {
-		ID        uuid.UUID `json:"id"`
-		Email     string    `json:"email"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
+		ID          uuid.UUID `json:"id"`
+		Email       string    `json:"email"`
+		CreatedAt   time.Time `json:"created_at"`
+		UpdatedAt   time.Time `json:"updated_at"`
+		IsChirpyRed bool      `josn:"is_chirpy_red"`
 	}
 )
 
@@ -45,7 +46,7 @@ func (cfg *Apiconfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithError(w, http.StatusBadRequest, "invalid email")
 		return
 	}
-	u := UserResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+	u := UserResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, IsChirpyRed: user.IsChirpyRed}
 	utils.RespondWithJson(w, http.StatusCreated, u)
 }
 
@@ -95,9 +96,10 @@ func (cfg *Apiconfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.RespondWithJson(w, http.StatusOK, UserResponse{
-		ID:        updatedUser.ID,
-		Email:     updatedUser.Email,
-		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: updatedUser.UpdatedAt,
+		ID:          updatedUser.ID,
+		Email:       updatedUser.Email,
+		CreatedAt:   updatedUser.CreatedAt,
+		UpdatedAt:   updatedUser.UpdatedAt,
+		IsChirpyRed: updatedUser.IsChirpyRed,
 	})
 }
