@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/Israel-Andrade-P/Chirpy.git/internal/auth"
@@ -57,10 +58,12 @@ func (cfg *Apiconfig) SaveChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *Apiconfig) GetChirps(w http.ResponseWriter, r *http.Request) {
-	s := r.URL.Query().Get("author_id")
+	authorId := r.URL.Query().Get("author_id")
+	sortParam := r.URL.Query().Get("sort")
+
 	chirpsRes := make([]chirpResponse, 0)
-	if s != "" {
-		userId, err := uuid.Parse(s)
+	if authorId != "" {
+		userId, err := uuid.Parse(authorId)
 		if err != nil {
 			utils.RespondWithError(w, http.StatusBadRequest, "invalid id")
 			return
@@ -73,6 +76,11 @@ func (cfg *Apiconfig) GetChirps(w http.ResponseWriter, r *http.Request) {
 		for _, chirp := range chirps {
 			chirpsRes = append(chirpsRes, chirpResponse(chirp))
 		}
+		if sortParam == "desc" {
+			sort.Slice(chirpsRes, func(i, j int) bool {
+				return chirpsRes[i].CreatedAt.After(chirpsRes[j].CreatedAt)
+			})
+		}
 		utils.RespondWithJson(w, http.StatusOK, chirpsRes)
 		return
 	}
@@ -82,6 +90,11 @@ func (cfg *Apiconfig) GetChirps(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, chirp := range chirps {
 		chirpsRes = append(chirpsRes, chirpResponse(chirp))
+	}
+	if sortParam == "desc" {
+		sort.Slice(chirpsRes, func(i, j int) bool {
+			return chirpsRes[i].CreatedAt.After(chirpsRes[j].CreatedAt)
+		})
 	}
 	utils.RespondWithJson(w, http.StatusOK, chirpsRes)
 }
